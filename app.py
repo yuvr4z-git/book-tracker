@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for
 import pymssql
+import pyodbc
 
 app = Flask(__name__)
 
@@ -56,3 +57,16 @@ def add_book():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+# Replace your old connection line with this:
+conn_str = (
+    "Driver={ODBC Driver 18 for SQL Server};"
+    "Server=tcp:YOUR_SERVER_NAME.database.windows.net,1433;"
+    "Database=YOUR_DATABASE_NAME;"
+    "Uid=YOUR_USERNAME;"
+    "Pwd=YOUR_PASSWORD;"
+    "Encrypt=yes;"
+    "TrustServerCertificate=no;"
+    "Connection Timeout=30;"
+)
+conn = pyodbc.connect(conn_str)
