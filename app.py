@@ -1,72 +1,104 @@
-from flask import Flask, render_template, request, redirect, url_for
+import os
+from flask import Flask, render_template, request, redirect, url_for, flash
 import pymssql
-import pyodbc
 
 app = Flask(__name__)
+# Secure fallback for secret key needed for flash messages
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dev_secret_key_12345')
 
-# 🛠️ Database Connection Details (Replace with your info!)
-DB_SERVER = 'book-server-uv.database.windows.net'
+# Database Configuration Configuration Slots
+DB_SERVER = 'book-tracker-rg.database.windows.net'
 DB_USER = 'yuvr4z'
 DB_PASSWORD = 'Yuvi@2211'
 DB_NAME = 'book-db'
 
 
 def get_db_connection():
-    # Helper function to open a connection to Azure SQL
-    return pymssql.connect(DB_SERVER, DB_USER, DB_PASSWORD, DB_NAME)
+    """Establishes a secure connection to the Azure SQL Database."""
+    try:
+        conn = pymssql.connect(
+            server=DB_SERVER,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            database=DB_NAME,
+            timeout=30
+        )
+        return conn
+    except Exception as e:
+        print(f"❌ DATABASE CONNECTION ERROR: {e}")
+        return None
 
 
 @app.route('/')
 def index():
     conn = get_db_connection()
-    cursor = conn.cursor(as_dict=True)  # as_dict=True makes rows behave like Python dicts
+    if not conn:
+        return "Database Connection Failed. Check server logs and firewall rules.", 500
 
-    # Fetch all books from the Azure SQL Database
-    cursor.execute('SELECT id, title, author, status, rating FROM books')
-    cloud_books = cursor.fetchall()
-
-    cursor.close()
-    conn.close()
-
-    # Send the live data to your index.html file
-    return render_template('index.html', books=cloud_books)
+    try:
+        cursor = conn.cursor(as_dict=True)
+        cursor.execute("SELECT id, title, author, status, rating FROM books ORDER BY id DESC")
+        books = cursor.fetchall()
+        return render_template('index.html', books=books)
+    except Exception as e:
+        print(f"❌ Query Execution Failed: {e}")
+        return f"Error loading library data: {e}", 500
+    finally:
+        conn.close()
 
 
 @app.route('/add', methods=['POST'])
 def add_book():
     title = request.form.get('title')
     author = request.form.get('author')
-    status = request.form.get('status')
+    status = request.form.get('status', 'Want to Read')
+    rating = request.form.get('rating')
 
-    if title and author:
-        conn = get_db_connection()
-        cursor = conn.cursor()
+    # Convert empty string to None for integer column parsing
+    rating = int(rating) if rating and rating.isdigit() else None
 
-        # Insert the user's form input straight into the cloud table
-        cursor.execute(
-            "INSERT INTO books (title, author, status, rating) VALUES (%s, %s, %s, NULL)",
-            (title, author, status)
-        )
+    if not title or not author:
+        flash("Title and Author fields are required!", "danger")
+        return redirect(url_for('index'))
 
-        conn.commit()
-        cursor.close()
-        conn.close()
+    conn = get_db_connection()
+    if conn:
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO books (title, author, status, rating) VALUES (%s, %s, %s, %s)",
+                (title, author, status, rating)
+            )
+            conn.commit()
+            flash("Book added to tracking array successfully!", "success")
+        except Exception as e:
+            print(f"❌ Insert Failed: {e}")
+            flash(f"Error adding record: {e}", "danger")
+        finally:
+            conn.close()
+    else:
+        flash("Database unavailable. Action canceled.", "danger")
 
     return redirect(url_for('index'))
 
 
-if __name__ == '__main__':
-    app.run(debug=True)
+@app.route('/delete/<int:book_id>', methods=['POST'])
+def delete_book(book_id):
+    conn = get_db_connection()
+    if conn:
+        try:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM books WHERE id = %s", (book_id,))
+            conn.commit()
+            flash("Book removed cleanly.", "info")
+        except Exception as e:
+            print(f"❌ Delete Failed: {e}")
+            flash(f"Error removing record: {e}", "danger")
+        finally:
+            conn.close()
+    return redirect(url_for('index'))
 
-# Replace your old connection line with this:
-conn_str = (
-    "Driver={ODBC Driver 18 for SQL Server};"
-    "Server=tcp:YOUR_SERVER_NAME.database.windows.net,1433;"
-    "Database=YOUR_DATABASE_NAME;"
-    "Uid=YOUR_USERNAME;"
-    "Pwd=YOUR_PASSWORD;"
-    "Encrypt=yes;"
-    "TrustServerCertificate=no;"
-    "Connection Timeout=30;"
-)
-conn = pyodbc.connect(conn_str)
+
+if __name__ == '__main__':
+    # Local development server initialization
+    app.run(debug=True, host='0.0.0.0', port=5000)
