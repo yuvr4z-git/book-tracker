@@ -14,13 +14,16 @@ DB_NAME = 'book-db'
 
 
 def get_db_connection():
-    """Establishes a secure connection to the Azure SQL Database."""
+    """Establishes a secure connection to the Azure SQL Database with strict parameters."""
     try:
         conn = pymssql.connect(
             server=DB_SERVER,
             user=DB_USER,
             password=DB_PASSWORD,
             database=DB_NAME,
+            port=1433,              # Explicit port assignment
+            tds_version='7.3',     # Forces modern SQL Server protocol translation
+            conn_properties='SET ANSI_NULLS ON; SET ANSI_WARNINGS ON;', # Standard protocol compliance
             timeout=30
         )
         return conn
