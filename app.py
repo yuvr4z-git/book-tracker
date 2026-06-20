@@ -8,7 +8,7 @@ app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dev_secret_key_12345')
 
 # Database Configuration Configuration Slots
 DB_SERVER = 'book-tracker-rg.database.windows.net'
-DB_USER = 'yuvr4z'
+DB_USER = 'yuvr4z@book-tracker-rg'
 DB_PASSWORD = 'Yuvi@2211'
 DB_NAME = 'book-db'
 
