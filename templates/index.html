@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Cloud Book Tracker</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; }
+        form { display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px; }
+        input, select, button { padding: 8px; font-size: 16px; }
+        button { background-color: #0078d4; color: white; border: none; cursor: pointer; }
+        .book-item { padding: 10px; border-bottom: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+    <h1>📚 My Reading List</h1>
+
+    <form action="/add" method="POST">
+        <input type="text" name="title" placeholder="Book Title" required>
+        <input type="text" name="author" placeholder="Author" required>
+        <select name="status">
+            <option value="To Read">To Read</option>
+            <option value="Reading">Reading</option>
+            <option value="Completed">Completed</option>
+        </select>
+        <button type="submit">Add Book</button>
+    </form>
+
+    <div id="book-list">
+        {% for book in books %}
+        <div class="book-item">
+            <strong>{{ book.title }}</strong> by {{ book.author }} <br>
+            <small>Status: {{ book.status }} | Rating: {{ book.rating or 'Unrated' }}</small>
+        </div>
+        {% endfor %}
+    </div>
+</body>
+</html>
